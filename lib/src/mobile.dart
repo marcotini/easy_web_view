@@ -1,6 +1,3 @@
-import 'dart:io';
-
-import 'package:easy_web_view/easy_web_view.dart';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -19,8 +16,6 @@ class EasyWebView extends StatefulWidget implements EasyWebViewImpl {
     this.convertToWidgets = false,
     this.headers = const {},
     this.widgetsTextSelectable = false,
-    this.crossWindowEvents = const [],
-    this.webNavigationDelegate,
   })  : assert((isHtml && isMarkdown) == false),
         super(key: key);
 
@@ -56,30 +51,15 @@ class EasyWebView extends StatefulWidget implements EasyWebViewImpl {
 
   @override
   final void Function() onLoaded;
-
-  @override
-  final List<CrossWindowEvent> crossWindowEvents;
-
-  @override
-  final WebNavigationDelegate? webNavigationDelegate;
 }
 
 class _EasyWebViewState extends State<EasyWebView> {
-  late WebViewController _webViewController;
-
-  @override
-  void initState() {
-    super.initState();
-
-    // Enable hybrid composition.
-    if (Platform.isAndroid) WebView.platform = SurfaceAndroidWebView();
-  }
+  late WebViewController _controller;
 
   @override
   void didUpdateWidget(EasyWebView oldWidget) {
     if (oldWidget.src != widget.src) {
-      _webViewController.loadUrl(_updateUrl(widget.src),
-          headers: widget.headers);
+      _controller.loadUrl(_updateUrl(widget.src), headers: widget.headers);
     }
     if (oldWidget.height != widget.height) {
       if (mounted) setState(() {});
@@ -100,15 +80,17 @@ class _EasyWebViewState extends State<EasyWebView> {
       _src = "data:text/html;charset=utf-8," +
           Uri.encodeComponent(EasyWebViewImpl.wrapHtml(url));
     }
-    widget.onLoaded();
+    if (widget?.onLoaded != null) {
+      widget.onLoaded();
+    }
     return _src;
   }
 
   @override
   Widget build(BuildContext context) {
     return OptionalSizedChild(
-      width: widget.width,
-      height: widget.height,
+      width: widget?.width,
+      height: widget?.height,
       builder: (w, h) {
         String src = widget.src;
         if (widget.convertToWidgets) {
@@ -133,35 +115,15 @@ class _EasyWebViewState extends State<EasyWebView> {
           );
         }
         return WebView(
-          key: widget.key,
+          key: widget?.key,
           initialUrl: _updateUrl(src),
           javascriptMode: JavascriptMode.unrestricted,
-          onWebViewCreated: (webViewController) {
-            _webViewController = webViewController;
-            widget.onLoaded();
-          },
-          navigationDelegate: (navigationRequest) async {
-            if (widget.webNavigationDelegate == null) {
-              return NavigationDecision.navigate;
+          onWebViewCreated: (val) {
+            _controller = val;
+            if (widget?.onLoaded != null) {
+              widget.onLoaded();
             }
-
-            final webNavigationDecision = await widget.webNavigationDelegate!(
-                WebNavigationRequest(navigationRequest.url));
-            return (webNavigationDecision == WebNavigationDecision.prevent)
-                ? NavigationDecision.prevent
-                : NavigationDecision.navigate;
           },
-          javascriptChannels: widget.crossWindowEvents.isNotEmpty
-              ? widget.crossWindowEvents
-                  .map(
-                    (crossWindowEvent) => JavascriptChannel(
-                      name: crossWindowEvent.name,
-                      onMessageReceived: (javascriptMessage) => crossWindowEvent
-                          .eventAction(javascriptMessage.message),
-                    ),
-                  )
-                  .toSet()
-              : Set<JavascriptChannel>(),
         );
       },
     );

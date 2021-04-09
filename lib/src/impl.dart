@@ -1,4 +1,3 @@
-import 'package:easy_web_view/easy_web_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:html2md/html2md.dart' as html2md;
@@ -15,9 +14,7 @@ class EasyWebViewImpl {
   final bool convertToWidgets;
   final Map<String, String> headers;
   final bool widgetsTextSelectable;
-  final void Function() onLoaded;
-  final List<CrossWindowEvent> crossWindowEvents;
-  final WebNavigationDelegate? webNavigationDelegate;
+  final VoidCallback onLoaded;
 
   const EasyWebViewImpl({
     Key? key,
@@ -31,8 +28,6 @@ class EasyWebViewImpl {
     this.convertToWidgets = false,
     this.widgetsTextSelectable = false,
     this.headers = const {},
-    this.crossWindowEvents = const [],
-    this.webNavigationDelegate,
   }) : assert((isHtml && isMarkdown) == false);
 
   static String wrapHtml(String src) {
@@ -146,7 +141,7 @@ class LocalMarkdown extends StatelessWidget {
   Widget build(BuildContext context) {
     return Markdown(
       data: data,
-      onTapLink: (_, url, __) => url == null ? null : launch(url),
+      onTapLink: (link, href, title) => launch(link),
       selectable: isSelectable,
     );
   }
